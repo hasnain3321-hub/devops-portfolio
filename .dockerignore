@@ -1,0 +1,9 @@
+.git
+.gitignore
+build/
+docs/
+terraform/
+monitoring/
+*.log
+.env
+.env.*
