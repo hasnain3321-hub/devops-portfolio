@@ -3,60 +3,93 @@ pipeline {
 
     options {
         timestamps()
+        disableConcurrentBuilds()
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Getting source code from GitHub'
+                echo 'Checking out source code'
                 checkout scm
+            }
+        }
+
+        stage('Validate') {
+            steps {
+                echo 'Validating project structure'
+
+                sh '''
+                    set -eu
+
+                    test -f app/index.html
+                    test -f app/css/style.css
+                    test -f app/js/script.js
+                    test -f scripts/test.sh
+
+                    echo "Project structure validation passed"
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running automated tests'
+                echo 'Running automated website tests'
                 sh 'bash scripts/test.sh'
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Building website package'
+                echo 'Creating website build package'
 
                 sh '''
                     set -eu
+
                     mkdir -p build
 
-                    tar --exclude='./.git' \
-                        --exclude='./build' \
-                        -czf build/portfolio-build.tar.gz .
+                    tar -czf build/devops-launchpad.tar.gz -C app .
 
-                    test -s build/portfolio-build.tar.gz
+                    test -s build/devops-launchpad.tar.gz
 
-                    echo "Website package created successfully"
-                    ls -lh build/portfolio-build.tar.gz
+                    echo "Build package created successfully"
+                    ls -lh build/devops-launchpad.tar.gz
                 '''
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Deploying portfolio website'
+                echo 'Deploying website'
 
                 sh '''
                     set -eu
 
-                    DEPLOY_DIR="/var/lib/jenkins/deployments/devops-portfolio"
+                    DEPLOY_DIR="/var/lib/jenkins/deployments/devops-launchpad"
 
                     mkdir -p "$DEPLOY_DIR"
 
-                    tar -xzf build/portfolio-build.tar.gz \
-                        -C "$DEPLOY_DIR"
+                    tar -xzf build/devops-launchpad.tar.gz -C "$DEPLOY_DIR"
 
-                    echo "Website deployed successfully"
-                    ls -la "$DEPLOY_DIR"
+                    echo "Website deployment completed"
+                '''
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                echo 'Verifying deployed website'
+
+                sh '''
+                    set -eu
+
+                    DEPLOY_DIR="/var/lib/jenkins/deployments/devops-launchpad"
+
+                    test -f "$DEPLOY_DIR/index.html"
+                    test -f "$DEPLOY_DIR/css/style.css"
+                    test -f "$DEPLOY_DIR/js/script.js"
+
+                    echo "Deployment verification passed"
                 '''
             }
         }
@@ -64,11 +97,11 @@ pipeline {
 
     post {
         success {
-            echo 'CI/CD Pipeline completed successfully!'
+            echo 'DEVOPS LAUNCHPAD: CI/CD PIPELINE SUCCESSFUL!'
         }
 
         failure {
-            echo 'Pipeline failed. Check Console Output.'
+            echo 'Pipeline failed. Please check Console Output.'
         }
     }
 }
